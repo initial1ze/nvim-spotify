@@ -167,15 +167,6 @@ local function metadata_handler()
     loop.read_start(stdout, on_stdout)
 end
 
--- remove this later
---[[ local function check()
-    if M.is_running == false then
-        vim.cmd "echom \"Spotify is not runnning.\""
-    end
-end ]]
-
--- https://open.spotify.com/track/3ExeNEpJJQXfmq1cwj0LVo?si=a468aff16ed246d6
--- https://open.spotify.com/playlist/37i9dQZF1DX5q67ZpWyRrZ?si=a513b607764b4c6f
 local function parse_uri(spotify_url)
     if not spotify_url:find("/") then
         return spotify_url
