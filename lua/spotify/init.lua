@@ -2,17 +2,11 @@ local loop = vim.loop
 
 local M = {}
 
-M.is_running = nil
 M.metadata_table = {}
 
 local function on_error(err, data)
     if err then print('ERROR: ' .. err) end
-    if data then
-        print("Spotify is not runnning.")
-        --[[ M.is_running = false
-    else
-        M.is_running = true ]]
-    end
+    if data then print("Spotify is not runnning.") end
 end
 
 local function on_stdout(err, data)
@@ -21,11 +15,7 @@ local function on_stdout(err, data)
         for s in data:gmatch("[^\n]+") do
             local key, value = s:match("^(.*):%s(.*)$")
             M.metadata_table[key:match("^.*:(.*)")] = value
-            -- table.insert(M.metadata_table, ok)
         end
-        --[[ print('Current track: ' .. M.metadata_table["title"] .. ' - ' ..
-                  M.metadata_table["artist"]) ]]
-        -- print(vim.inspect(M.metadata_table))
     end
 end
 
@@ -137,6 +127,24 @@ local function prev_handler()
     loop.read_start(stderr, on_error)
 end
 
+local function open_uri_handler(uri)
+    local stderr = loop.new_pipe(false)
+
+    _uri = loop.spawn("qdbus", {
+        args = {
+            "org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2",
+            "org.mpris.MediaPlayer2.Player.OpenUri", uri
+        },
+        stdio = {nil, nil, stderr}
+    }, function()
+        stderr:read_stop()
+        stderr:close()
+        _uri:close()
+    end)
+
+    loop.read_start(stderr, on_error)
+end
+
 local function metadata_handler()
     local stderr = loop.new_pipe(false)
     local stdout = loop.new_pipe(false)
@@ -159,47 +167,46 @@ local function metadata_handler()
     loop.read_start(stdout, on_stdout)
 end
 
-local function check()
+-- remove this later
+--[[ local function check()
     if M.is_running == false then
         vim.cmd "echom \"Spotify is not runnning.\""
+    end
+end ]]
+
+-- https://open.spotify.com/track/3ExeNEpJJQXfmq1cwj0LVo?si=a468aff16ed246d6
+-- https://open.spotify.com/playlist/37i9dQZF1DX5q67ZpWyRrZ?si=a513b607764b4c6f
+local function parse_uri(spotify_url)
+    if not spotify_url:find("/") then
+        return spotify_url
     else
-        -- print(M.metadata_table["title"])
-        -- print(M.metadata_table["title"] .. ' - ' .. M.metadata_table["artist"])
+        local uri = "spotify:" ..
+                        spotify_url:match("^https://open.spotify.com/(.*)?.*$")
+                            :gsub("/", ":")
+        return uri
     end
 end
 
-function M.toggle()
-    vim.schedule(toggle_handler)
-    -- check()
-    -- vim.schedule(metadata_handler)
-end
-function M.play()
-    vim.schedule(play_handler)
-    -- vim.schedule(metadata_handler)
-    -- check()
-end
-function M.pause()
-    vim.schedule(pause_handler)
-    -- check()
-end
-function M.stop()
-    vim.schedule(stop_handler)
-    -- check()
-end
-function M.next()
-    vim.schedule(next_handler)
-    -- vim.schedule(metadata_handler)
-    -- check()
-end
-function M.prev()
-    vim.schedule(prev_handler)
-    -- vim.schedule(metadata_handler)
-    -- check()
-end
-function M.metad()
-    vim.schedule(metadata_handler)
-    -- vim.schedule(metadata_handler)
-    -- check()
+function M.toggle() vim.schedule(toggle_handler) end
+
+function M.play() vim.schedule(play_handler) end
+
+function M.pause() vim.schedule(pause_handler) end
+
+function M.stop() vim.schedule(stop_handler) end
+
+function M.next() vim.schedule(next_handler) end
+
+function M.prev() vim.schedule(prev_handler) end
+
+function M.metad() vim.schedule(metadata_handler) end
+
+function M.open_uri()
+    local uri = vim.fn.input("Enter URI: ", "")
+    if #uri > 0 then
+        uri = parse_uri(uri)
+        vim.schedule(function() open_uri_handler(uri) end)
+    end
 end
 
 return M
