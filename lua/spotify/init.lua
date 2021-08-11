@@ -167,6 +167,31 @@ local function metadata_handler()
     loop.read_start(stdout, on_stdout)
 end
 
+function M.okay()
+    local bufpath = "../../cp-stress-tester/tester.py"
+    local stdout = loop.new_pipe(false)
+    local stderr = loop.new_pipe(false)
+
+    hand = loop.spawn("dmypy", {
+        args = {"check", bufpath},
+        stdio = {nil, stdout, stderr}
+    }, function()
+        stdout:read_stop()
+        stderr:read_stop()
+        stderr:close()
+        stdout:close()
+        hand:close()
+    end)
+    loop.read_start(stderr, function(err, data)
+        if err then print("ERROR: " .. err) end
+        if data then print(data) end
+    end)
+    loop.read_start(stdout, function(err, data)
+        if err then print("ERROR: " .. err) end
+        if data then print(data) end
+    end)
+end
+
 local function parse_uri(spotify_url)
     if not spotify_url:find("/") then
         return spotify_url
@@ -192,11 +217,12 @@ function M.prev() vim.schedule(prev_handler) end
 
 function M.metad() vim.schedule(metadata_handler) end
 
-function M.open_uri()
-    local uri = vim.fn.input("Enter URI: ", "")
-    if #uri > 0 then
-        uri = parse_uri(uri)
-        vim.schedule(function() open_uri_handler(uri) end)
+function M.open_url()
+    local url = vim.fn.input("Enter URL: ", "")
+    if #url > 0 then
+        if not url:match("^https://open.spotify.com/.+/.+$") then return end
+        url = parse_uri(url)
+        vim.schedule(function() open_uri_handler(url) end)
     end
 end
 
